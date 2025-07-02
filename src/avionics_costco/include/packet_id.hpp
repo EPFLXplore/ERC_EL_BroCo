@@ -13,7 +13,7 @@
 #define MassDrill_ID 3
 #define MassDrill_Request_ID 4
 #define MassHD_ID 5
-#define MassDrill_Request_ID 6
+#define MassHD_Request_ID 6
 
 // Servo packets
 #define Servo_ID 7

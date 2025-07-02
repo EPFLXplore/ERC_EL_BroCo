@@ -19,9 +19,9 @@ CostcoSubscriber::CostcoSubscriber() : Node("costco_subscriber") {
   // These subscribers are binded with a handle such that when a message is
   // received, the handle is called
 
-  this->led_message_ = this->create_subscription<custom_msg::msg::LEDMessage>(
-      ("/EL/LedCommands"), 10,
-        std::bind(&CostcoSubscriber::LEDHandler, this, std::placeholders::_1));
+  // this->led_message_ = this->create_subscription<custom_msg::msg::LEDMessage>(
+  //     ("/EL/LedCommands"), 10,
+  //       std::bind(&CostcoSubscriber::LEDHandler, this, std::placeholders::_1));
 
   this->servo_request_ =
       this->create_subscription<custom_msg::msg::ServoRequest>(
@@ -39,9 +39,9 @@ CostcoSubscriber::~CostcoSubscriber() {
 }
 
 // Handle for the LED message
-void CostcoSubscriber::LEDHandler(const custom_msg::msg::LEDMessage::SharedPtr msg) {
-  RCLCPP_INFO(this->get_logger(), "LED msg received");
-}
+// void CostcoSubscriber::LEDHandler(const custom_msg::msg::LEDMessage::SharedPtr msg) {
+//   RCLCPP_INFO(this->get_logger(), "LED msg received");
+// }
 
 // Handle for the Servo message
 void CostcoSubscriber::ServoRequestHandler(const custom_msg::msg::ServoRequest::SharedPtr msg) {

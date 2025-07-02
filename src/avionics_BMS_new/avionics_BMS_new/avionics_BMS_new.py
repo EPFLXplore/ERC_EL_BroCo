@@ -7,11 +7,16 @@ import minimalmodbus
 import serial
 import time
 import os
-# Import the BMS custom message
-from custom_msg.msg import BMS, FourInOne
 
-usb_port_bms = '/dev/ttyUSB0' # TOP RIGHT OF PI !
+from rclpy.executors import MultiThreadedExecutor
+
+# Import custom messages
+from custom_msg.msg import BMS, FourInOne, LEDMessage
+
+
+usb_port_bms = '/dev/ttyUSB1' # TOP RIGHT OF PI ! #MODIFIED FROM 0 TO 1 TO TEST LOCALLY LEDS    
 usb_port_4in1 = '/dev/ttyUSB3'
+usb_port_leds = '/dev/ttyUSB0' 
 
 # 4in1 register definitions
 HUM_REGISTER = 0
@@ -184,11 +189,77 @@ class PythonPublisher(Node):
         self.publisher_4in1.publish(msg_4in1)
 
 
+class PythonSubscriber(Node):
+    def __init__(self):
+        super().__init__('python_subscriber')
+        self.subscription = self.create_subscription(LEDMessage,'/EL/LedCommands',
+                                                     self.leds_callback, 10)
+        self.subscription  # prevent unused variable warning
+        self.port = usb_port_leds
+        self.serial = None
+        self.open_serial_port()
+        self.get_logger().info("LED Subscriber node initialized and subscribing to /EL/LedCommands")
+
+   
+
+    def open_serial_port(self):
+        try:
+            self.serial = serial.Serial(self.port, baudrate=115200, timeout=1)
+            self.get_logger().info(f"Serial port {self.port} opened successfully.")
+        except serial.SerialException as e:
+            self.get_logger().error(f"Failed to open serial port {self.port}: {e}")
+            self.serial = None
+
+    def leds_callback(self, msg):
+        self.get_logger().info('Received LED message:')
+        self.get_logger().info('System "%s"' % msg.system)
+        self.get_logger().info('State "%s"' % msg.state)
+
+        if self.serial != None:
+            try:
+                # Prepare the LED message
+                if msg.system not in [0, 1, 2, 3]:
+                    self.get_logger().error("Invalid system value. Must be 0, 1, 2, or 3.")
+                    return
+                if msg.state not in [0, 1, 2]:
+                    self.get_logger().error("Invalid state value. Must be 0, 1, or 2.")
+                    return
+                if msg.state == 0:
+                    mode = 5  # Off
+                    self.get_logger().info("Turning off LEDs.")
+                elif msg.state == 1:
+                    mode = 0  # On
+                    self.get_logger().info("Turning on LEDs.")
+                elif msg.state == 2:
+                    mode = 3  # Blinking
+                    self.get_logger().info("Blinking LEDs.")
+
+                led_message = f"0 100 {msg.system} {mode}\n"
+                self.serial.write(led_message.encode('ascii'))
+                self.get_logger().info("LED message sent successfully.")
+                
+            except serial.SerialException as e:
+                self.get_logger().error(f"Error writing to serial port: {e}")
+        else:
+            self.get_logger().error("Serial port is not open. Cannot send LED message.")
+            self.open_serial_port()
+
+
 def main(args=None):
     rclpy.init(args=args)
+    
+    # Create nodes
+    python_pub = PythonPublisher()
+    python_sub = PythonSubscriber()
 
-    python_pub = PythonPublisher() 
-    rclpy.spin(python_pub)
+    # Use a multithreaded executor to spin both nodes
+    executor = MultiThreadedExecutor()
+    executor.add_node(python_pub)
+    executor.add_node(python_sub)
+
+    executor.spin()
+ 
+    python_sub.destroy_node()
     python_pub.destroy_node()
     rclpy.shutdown()
 
